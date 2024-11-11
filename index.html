@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Collection Game</title>
+    <!-- Add Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
+    <style>
+        /* Previous CSS remains the same */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            touch-action: none;
+            background-image: url('images/home_bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            height: calc(100vh - 40px);
+            margin: 0 auto;
+            padding: 20px;
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+
+        .home_word_style {
+            color: white;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-top: 5vh;
+            /* This pushes content down by 20% of viewport height */
+            box-sizing: border-box;
+        }
+
+        .home_word_style button {
+            font-size: 10vw;
+            width: 70vw;
+            padding: 10.5vw 0;
+            border-radius: 10vw;
+            cursor: pointer;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(1vw);
+            transition: all 0.3s ease;
+            /* smooth transition for all changes */
+            animation: flash 2s infinite;
+            /* Apply the flash animation */
+        }
+
+        /* Define the flashing animation */
+        @keyframes flash {
+            0% {
+                background-color: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            }
+
+            50% {
+                background-color: rgba(255, 255, 255, 0.4);
+                box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            }
+
+            100% {
+                background-color: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        .home_word_style button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+            /* slightly larger */
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            /* glowing effect */
+        }
+
+        .home_word_style button:active {
+            transform: scale(0.95);
+            /* slightly smaller when clicked */
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .home_word_style h1 {
+            font-size: 6.5vw;
+        }
+
+        .home_word_style p {
+            font-size: 4.5vw;
+        }
+
+        .home_word_style h2 {
+            font-size: 3.5vw;
+        }
+
+
+
+        .question-container {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .word-bank {
+            position: relative;
+            height: 40vh;
+            margin: 20px 0;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .word {
+            position: absolute;
+            padding: 15px;
+            background: rgba(224, 224, 224, 0.9);
+            border: 1px solid #999;
+            border-radius: 5px;
+            cursor: move;
+            touch-action: none;
+            user-select: none;
+            transition: transform 0.2s;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 1;
+        }
+
+        .word.dragging {
+            z-index: 1000;
+        }
+
+        .word:hover {
+            transform: scale(1.05);
+            z-index: 1000;
+        }
+
+        .drop-zone {
+            position: relative;
+            /* Add this */
+            min-height: 100px;
+            border: 2px dashed #999;
+            padding: 10px;
+            margin: 20px 0;
+        }
+
+        .drop-zone .word {
+            background: #90EE90;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+        }
+
+        #start-screen {
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        #confirmation-screen {
+            display: none;
+        }
+
+        .selected-words {
+            margin: 20px 0;
+        }
+    </style>
+
+</head>
+
+<body>
+    <audio id="hoverSound">
+        <source src="sound/sound_start.wav" type="audio/wav">
+    </audio>
+    <audio id="clickSound">
+        <source src="sound/sound_start.wav" type="audio/wav">
+    </audio>
+    <div class="container">
+        <!-- HTML structure remains the same -->
+        <div id="start-screen" class="home_word_style">
+
+            <h1>Simply drag the word(s) of your choice</h1>
+            <div></div>
+            <h1>Are you ready to drag and drop?</h1>
+            <h1>YOUR VOICE MATTERS!</h1>
+            <p>Share your thoughts to shape the panel discussion in the luncheon.</p>
+
+            <button onclick="startGame()">I am ready!</button>
+        </div>
+
+        <div id="question1" class="question-container">
+            <h2>Question 1: Select positive emotions</h2>
+            <div class="word-bank">
+                <div class="word" draggable="true">happy</div>
+                <div class="word" draggable="true">sad</div>
+                <div class="word" draggable="true">joyful</div>
+                <div class="word" draggable="true">excited</div>
+                <div class="word" draggable="true">angry</div>
+            </div>
+            <div class="drop-zone" id="dropZone1"></div>
+            <button onclick="nextQuestion(1)">Next</button>
+        </div>
+
+        <div id="question2" class="question-container">
+            <h2>Question 2: Select colors</h2>
+            <div class="word-bank">
+                <div class="word" draggable="true">red</div>
+                <div class="word" draggable="true">blue</div>
+                <div class="word" draggable="true">tree</div>
+                <div class="word" draggable="true">green</div>
+                <div class="word" draggable="true">house</div>
+            </div>
+            <div class="drop-zone" id="dropZone2"></div>
+            <button onclick="nextQuestion(2)">Next</button>
+        </div>
+
+        <div id="question3" class="question-container">
+            <h2>Question 3: Select animals</h2>
+            <div class="word-bank">
+                <div class="word" draggable="true">cat</div>
+                <div class="word" draggable="true">door</div>
+                <div class="word" draggable="true">dog</div>
+                <div class="word" draggable="true">bird</div>
+                <div class="word" draggable="true">table</div>
+            </div>
+            <div class="drop-zone" id="dropZone3"></div>
+            <button onclick="nextQuestion(3)">Next</button>
+        </div>
+
+        <div id="confirmation-screen">
+            <h2>Confirmation</h2>
+            <div class="selected-words"></div>
+            <button onclick="previousQuestion()">Back</button>
+            <button onclick="saveToFirebase()">Submit</button>
+            <button onclick="goHome()">Home</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase configuration - Replace with your config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDin1nEtRQYTSs1tj0FiokU30GNvi3XXVw",
+            authDomain: "word-cloud-c6d6f.firebaseapp.com",
+            databaseURL: "https://word-cloud-c6d6f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "word-cloud-c6d6f",
+            storageBucket: "word-cloud-c6d6f.firebasestorage.app",
+            messagingSenderId: "669434070812",
+            appId: "1:669434070812:web:ab35256c5558d1d3591cd9",
+            measurementId: "G-216T2P2XPJ"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let selectedWords = {
+            question1: [],
+            question2: [],
+            question3: []
+        };
+
+        function startGame() {
+            // Clear all drop zones and reset positions
+            clearAllDropZones();
+            document.getElementById('start-screen').style.display = 'none';
+            document.getElementById('question1').style.display = 'block';
+            playClickSound();
+            setTimeout(() => {
+                initDragAndDrop();
+            }, 200);
+        }
+
+        function goHome() {
+            selectedWords = {
+                question1: [],
+                question2: [],
+                question3: []
+            };
+
+            // Clear all drop zones and reset positions
+            clearAllDropZones();
+
+            // Reset word banks
+    document.querySelectorAll('.word-bank').forEach(wordBank => {
+        const originalWords = wordBank.getAttribute('data-original-words')?.split(',') || [];
+        wordBank.innerHTML = ''; // Clear existing words
+        
+        originalWords.forEach(word => {
+            const wordElement = document.createElement('div');
+            wordElement.className = 'word';
+            wordElement.innerText = word.trim();
+            wordBank.appendChild(wordElement);
+        });
+    });
+
+            document.getElementById('confirmation-screen').style.display = 'none';
+            document.querySelectorAll('.question-container').forEach(container => {
+                container.style.display = 'none';
+            });
+            document.getElementById('start-screen').style.display = 'block';
+
+            // Reinitialize drag and drop
+    initDragAndDrop();
+        }
+
+        function dragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.innerText);
+            e.target.classList.add('dragging');
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            const word = e.dataTransfer.getData('text/plain');
+            addWordToDropZone(e.target, word);
+        }
+
+        let touchedWord = null;
+
+        function touchStart(e) {
+            e.preventDefault();
+            touchedWord = e.target;
+            e.target.classList.add('dragging');
+        }
+
+        function touchEnd(e) {
+            e.preventDefault();
+            if (touchedWord) {
+                addWordToDropZone(e.target, touchedWord.innerText);
+                touchedWord.classList.remove('dragging');
+                touchedWord = null;
+            }
+        }
+
+        function addWordToDropZone(dropZone, word) {
+            const wordElement = document.createElement('div');
+            wordElement.className = 'word';
+            wordElement.innerText = word;
+
+
+
+            // Get drop zone position
+            const dropZoneRect = dropZone.getBoundingClientRect();
+
+            // Calculate position relative to drop zone
+            // Use the last known touch position or default to center
+            let x = 0;
+            let y = 0;
+
+            if (touchX && touchY) {
+                x = touchX - dropZoneRect.left;
+                y = touchY - dropZoneRect.top;
+            } else {
+                // Default to center if no touch position
+                x = dropZoneRect.width / 2 - 50; // 50 is approximate half word width
+                y = dropZoneRect.height / 2 - 25; // 25 is approximate half word height
+            }
+
+            // Ensure the word stays within bounds
+            x = Math.max(0, Math.min(x, dropZoneRect.width - 100)); // 100 is approximate word width
+            y = Math.max(0, Math.min(y, dropZoneRect.height - 50)); // 50 is approximate word height
+
+            // Set position
+            wordElement.style.position = 'absolute';
+            wordElement.style.left = `${x}px`;
+            wordElement.style.top = `${y}px`;
+
+            // Add touch events to the new element
+            wordElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+            wordElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+            wordElement.addEventListener('touchend', handleTouchEnd);
+
+            dropZone.appendChild(wordElement);
+
+            const questionNumber = dropZone.id.replace('dropZone', '');
+            if (!selectedWords[`question${questionNumber}`].includes(word)) {
+                selectedWords[`question${questionNumber}`].push(word);
+            }
+
+            // Add click to remove functionality
+            wordElement.addEventListener('click', function () {
+                removeWordFromDropZone(dropZone, word);
+                this.remove();
+            });
+
+            // Update the confirmation screen
+            const confirmationScreen = document.getElementById('confirmation-screen');
+            if (confirmationScreen.style.display === 'block') {
+                showConfirmation();
+            }
+        }
+
+        function nextQuestion(currentQuestion) {
+    document.getElementById(`question${currentQuestion}`).style.display = 'none';
+    if (currentQuestion < 3) {
+        const nextQuestionElement = document.getElementById(`question${currentQuestion + 1}`);
+        nextQuestionElement.style.display = 'block';
+        // Reinitialize drag and drop for the new question
+        initDragAndDrop();
+        restoreDroppedWords();
+    } else {
+        showConfirmation();
+    }
+}
+
+        function clearAllDropZones() {
+            // Clear all drop zones
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.innerHTML = '';
+            });
+
+            // Reset dropped words positions
+            droppedWordsPositions = {
+                dropZone1: [],
+                dropZone2: [],
+                dropZone3: []
+            };
+
+            // Reset touch positions
+            touchX = null;
+            touchY = null;
+            draggingElement = null;
+            if (clonedElement) {
+                clonedElement.remove();
+                clonedElement = null;
+            }
+        }
+
+        function previousQuestion() {
+            document.getElementById('confirmation-screen').style.display = 'none';
+            document.getElementById('question3').style.display = 'block';
+            restoreDroppedWords(); // Restore positions
+        }
+
+        function showConfirmation() {
+            document.getElementById('confirmation-screen').style.display = 'block';
+            const selectedWordsDiv = document.querySelector('.selected-words');
+            selectedWordsDiv.innerHTML = '';
+
+            for (let question in selectedWords) {
+                selectedWordsDiv.innerHTML += `<p>${question}: ${selectedWords[question].join(', ')}</p>`;
+            }
+        }
+
+        function saveToFirebase() {
+            // Save each question's responses separately
+            for (let i = 1; i <= 3; i++) {
+                const questionRef = database.ref(`question${i}`);
+                questionRef.push(selectedWords[`question${i}`])
+                    .then(() => {
+                        if (i === 3) {
+                            alert('Responses saved successfully!');
+                            clearAllDropZones();
+                            goHome();
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error saving responses:', error);
+                        alert('Error saving responses. Please try again.');
+                    });
+            }
+        }
+        //---------
+        // Add touch event listeners and track touch positions
+        let touchX, touchY;
+        let draggingElement = null;
+        let clonedElement = null;
+
+
+        let droppedWordsPositions = {
+            dropZone1: [],
+            dropZone2: [],
+            dropZone3: []
+        };
+
+        function initDragAndDrop() {
+    // Initialize all word banks, including those for hidden questions
+    const wordBanks = document.querySelectorAll('.word-bank');
+
+    wordBanks.forEach(wordBank => {
+        const words = wordBank.querySelectorAll('.word');
+        
+        // Force the word bank to have layout calculated
+        wordBank.style.display = 'block';
+        const bankRect = wordBank.getBoundingClientRect();
+        
+        // Calculate usable area
+        const maxWidth = bankRect.width - 100; // Subtract padding and word width
+        const maxHeight = bankRect.height - 50; // Subtract padding and word height
+        const padding = 20;
+        
+        const positions = [];
+
+        words.forEach(word => {
+            let validPosition = false;
+            let attempts = 0;
+            let randomX, randomY;
+
+            while (!validPosition && attempts < 100) {
+                randomX = padding + Math.random() * maxWidth;
+                randomY = padding + Math.random() * maxHeight;
+
+                validPosition = true;
+
+                // Check for overlap with existing positions
+                for (const pos of positions) {
+                    const distance = Math.sqrt(
+                        Math.pow(randomX - pos.x, 2) +
+                        Math.pow(randomY - pos.y, 2)
+                    );
+
+                    if (distance < 100) { // Minimum distance between words
+                        validPosition = false;
+                        break;
+                    }
+                }
+
+                attempts++;
+            }
+
+            // Store the position
+            positions.push({
+                x: randomX,
+                y: randomY
+            });
+
+            // Random rotation between -15 and 15 degrees
+            const randomRotation = Math.random() * 30 - 15;
+
+            word.style.position = 'absolute';
+            word.style.left = `${randomX}px`;
+            word.style.top = `${randomY}px`;
+            word.style.transform = `rotate(${randomRotation}deg)`;
+
+            // Add event listeners
+            word.addEventListener('touchstart', handleTouchStart, { passive: false });
+            word.addEventListener('touchmove', handleTouchMove, { passive: false });
+            word.addEventListener('touchend', handleTouchEnd);
+            word.addEventListener('dragstart', handleDragStart);
+            word.addEventListener('dragend', handleDragEnd);
+        });
+
+        // Restore the original display state if the question is not current
+        if (wordBank.closest('.question-container').style.display === 'none') {
+            wordBank.style.display = '';
+        }
+    });
+
+    const dropZones = document.querySelectorAll('.drop-zone');
+    dropZones.forEach(zone => {
+        zone.addEventListener('touchmove', handleDropZoneTouchMove, { passive: false });
+        zone.addEventListener('touchend', handleDropZoneTouchEnd);
+        zone.addEventListener('dragover', handleDragOver);
+        zone.addEventListener('drop', handleDrop);
+    });
+}
+
+        function handleTouchStart(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            touchX = touch.clientX;
+            touchY = touch.clientY;
+            draggingElement = this;
+
+            // Create clone for visual feedback
+            clonedElement = this.cloneNode(true);
+            clonedElement.style.position = 'fixed';
+            clonedElement.style.opacity = '0.8';
+            clonedElement.style.pointerEvents = 'none';
+            document.body.appendChild(clonedElement);
+
+            updateClonePosition(touch.clientX, touch.clientY);
+        }
+
+        function handleTouchMove(e) {
+            e.preventDefault();
+            if (!draggingElement) return;
+
+            const touch = e.touches[0];
+            touchX = touch.clientX;  // Update touch coordinates
+            touchY = touch.clientY;
+            updateClonePosition(touch.clientX, touch.clientY);
+        }
+
+        function updateClonePosition(x, y) {
+            if (clonedElement) {
+                // Offset by half the element's width/height to center it under the finger
+                const rect = clonedElement.getBoundingClientRect();
+                clonedElement.style.left = (x - rect.width / 2) + 'px';
+                clonedElement.style.top = (y - rect.height / 2) + 'px';
+            }
+        }
+
+        function handleTouchEnd(e) {
+            if (!draggingElement) return;
+
+            // Find the drop zone under the finger
+            const touch = e.changedTouches[0];
+            const dropZone = document.elementFromPoint(touch.clientX, touch.clientY);
+
+            if (dropZone && dropZone.classList.contains('drop-zone')) {
+                const word = draggingElement.innerText;
+                addWordToDropZone(dropZone, word); // Use addWordToDropZone instead of manual clone
+            }
+
+            // Clean up
+            if (clonedElement) {
+                clonedElement.remove();
+                clonedElement = null;
+            }
+            draggingElement = null;
+        }
+
+        function handleDropZoneTouchMove(e) {
+            e.preventDefault();
+        }
+
+        function handleDropZoneTouchEnd(e) {
+            e.preventDefault();
+        }
+
+        function handleDragStart(e) {
+            draggingElement = this;
+            e.dataTransfer.setData('text/plain', '');
+            e.dataTransfer.effectAllowed = 'copy';
+        }
+
+        function handleDragEnd() {
+            draggingElement = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            if (draggingElement) {
+                const word = draggingElement.innerText;
+                addWordToDropZone(this, word); // Use addWordToDropZone instead of manual clone
+            }
+        }
+
+        function removeWordFromDropZone(dropZone, word) {
+            const questionNumber = dropZone.id.replace('dropZone', '');
+            const index = selectedWords[`question${questionNumber}`].indexOf(word);
+            if (index > -1) {
+                selectedWords[`question${questionNumber}`].splice(index, 1);
+
+                // Update the confirmation screen if it's visible
+                const confirmationScreen = document.getElementById('confirmation-screen');
+                if (confirmationScreen.style.display === 'block') {
+                    showConfirmation();
+                }
+            }
+        }
+
+        function playHoverSound() {
+            const sound = document.getElementById('hoverSound');
+            if (sound) {
+                sound.currentTime = 0;
+                sound.volume = 0.2; // Reduce volume to 20%
+                const playPromise = sound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Audio play failed:", error);
+                    });
+                }
+            }
+        }
+
+        function playClickSound() {
+            const sound = document.getElementById('clickSound');
+            if (sound) {
+                sound.currentTime = 0;
+                sound.volume = 0.3; // Reduce volume to 30%
+                const playPromise = sound.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("Audio play failed:", error);
+                    });
+                }
+            }
+        }
+
+        function addWordToDropZone(dropZone, word) {
+    // Remove the original word from the word bank if it exists
+    if (draggingElement) {
+        draggingElement.remove();
+    }
+
+    const wordElement = document.createElement('div');
+    wordElement.className = 'word';
+    wordElement.innerText = word;
+
+    // Get drop zone position
+    const dropZoneRect = dropZone.getBoundingClientRect();
+
+    // Calculate position relative to drop zone
+    let x = 0;
+    let y = 0;
+
+    if (touchX && touchY) {
+        x = touchX - dropZoneRect.left;
+        y = touchY - dropZoneRect.top;
+    } else {
+        x = dropZoneRect.width / 2 - 50;
+        y = dropZoneRect.height / 2 - 25;
+    }
+
+    // Ensure the word stays within bounds
+    x = Math.max(0, Math.min(x, dropZoneRect.width - 100));
+    y = Math.max(0, Math.min(y, dropZoneRect.height - 50));
+
+    // Set position
+    wordElement.style.position = 'absolute';
+    wordElement.style.left = `${x}px`;
+    wordElement.style.top = `${y}px`;
+
+    // Store the position
+    const zoneId = dropZone.id;
+    if (!droppedWordsPositions[zoneId]) {
+        droppedWordsPositions[zoneId] = [];
+    }
+    droppedWordsPositions[zoneId].push({
+        word: word,
+        x: x,
+        y: y
+    });
+
+    // Add touch events to the new element
+    wordElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    wordElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+    wordElement.addEventListener('touchend', handleTouchEnd);
+
+    dropZone.appendChild(wordElement);
+
+    const questionNumber = dropZone.id.replace('dropZone', '');
+    if (!selectedWords[`question${questionNumber}`].includes(word)) {
+        selectedWords[`question${questionNumber}`].push(word);
+    }
+
+    // Add click to remove functionality with return to word bank
+    wordElement.addEventListener('click', function() {
+        // Remove the position data
+        const index = droppedWordsPositions[zoneId].findIndex(item => item.word === word);
+        if (index > -1) {
+            droppedWordsPositions[zoneId].splice(index, 1);
+        }
+        
+        // Remove from drop zone
+        removeWordFromDropZone(dropZone, word);
+        this.remove();
+
+        // Return word to word bank
+        returnWordToBank(word, questionNumber);
+    });
+
+    // Update the confirmation screen
+    const confirmationScreen = document.getElementById('confirmation-screen');
+    if (confirmationScreen.style.display === 'block') {
+        showConfirmation();
+    }
+}
+
+// Add this new function to return words to the word bank
+function returnWordToBank(word, questionNumber) {
+    const wordBank = document.querySelector(`#question${questionNumber} .word-bank`);
+    if (wordBank) {
+        const newWord = document.createElement('div');
+        newWord.className = 'word';
+        newWord.innerText = word;
+
+        // Random position within word bank
+        const bankRect = wordBank.getBoundingClientRect();
+        const maxWidth = bankRect.width - 100;
+        const maxHeight = bankRect.height - 50;
+        const randomX = Math.random() * maxWidth;
+        const randomY = Math.random() * maxHeight;
+
+        newWord.style.position = 'absolute';
+        newWord.style.left = `${randomX}px`;
+        newWord.style.top = `${randomY}px`;
+
+        // Add event listeners
+        newWord.addEventListener('touchstart', handleTouchStart, { passive: false });
+        newWord.addEventListener('touchmove', handleTouchMove, { passive: false });
+        newWord.addEventListener('touchend', handleTouchEnd);
+        newWord.addEventListener('dragstart', handleDragStart);
+        newWord.addEventListener('dragend', handleDragEnd);
+
+        wordBank.appendChild(newWord);
+    }
+}
+
+        // Add this function to restore positions when navigating between questions
+        function restoreDroppedWords() {
+            Object.keys(droppedWordsPositions).forEach(zoneId => {
+                const dropZone = document.getElementById(zoneId);
+                if (dropZone) {
+                    // Clear existing words
+                    dropZone.innerHTML = '';
+
+                    // Restore each word with its position
+                    droppedWordsPositions[zoneId].forEach(wordData => {
+                        const wordElement = document.createElement('div');
+                        wordElement.className = 'word';
+                        wordElement.innerText = wordData.word;
+                        wordElement.style.position = 'absolute';
+                        wordElement.style.left = `${wordData.x}px`;
+                        wordElement.style.top = `${wordData.y}px`;
+
+                        // Add event listeners
+                        wordElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+                        wordElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+                        wordElement.addEventListener('touchend', handleTouchEnd);
+
+                        dropZone.appendChild(wordElement);
+                    });
+                }
+            });
+        }
+
+
+        // Initialize audio context on user interaction
+        document.addEventListener('click', function () {
+            document.body.classList.add('user-interacted');
+            // Create and start audio context if needed
+            if (typeof AudioContext !== 'undefined') {
+                const audioContext = new AudioContext();
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+            }
+        }, { once: true });
+
+        // Add this function to handle window resize
+        window.addEventListener('resize', () => {
+            const wordBanks = document.querySelectorAll('.word-bank');
+            wordBanks.forEach(wordBank => {
+                const words = wordBank.querySelectorAll('.word');
+                const bankRect = wordBank.getBoundingClientRect();
+
+                words.forEach(word => {
+                    const randomX = Math.random() * (bankRect.width - word.offsetWidth);
+                    const randomY = Math.random() * (bankRect.height - word.offsetHeight);
+                    word.style.left = `${randomX}px`;
+                    word.style.top = `${randomY}px`;
+                });
+            });
+        });
+
+
+        // Add these CSS styles to your existing styles
+        const styles = `
+.word {
+    touch-action: none; /* Prevents default touch actions */
+    -webkit-user-select: none; /* Prevents text selection on iOS */
+    user-select: none;
+}
+
+.drop-zone {
+    touch-action: none;
+}
+`;
+
+        // Add the styles to your document
+        const styleSheet = document.createElement("style");
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+
+        // Initialize when the document is ready
+        document.addEventListener('DOMContentLoaded', initDragAndDrop);
+
+    </script>
+</body>
+
+</html>

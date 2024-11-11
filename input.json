@@ -1,0 +1,45 @@
+{
+  "question1": {
+    "-OB6IB20tn83Hq3Uc3hO": [
+      "happy"
+    ],
+    "-OB6Nd07XbwaCybonD6p": [
+      "excited",
+      "angry",
+      "sad"
+    ],
+    "-OB6NjJzK1i4XesnWgcQ": [
+      "happy",
+      "excited",
+      "angry"
+    ]
+  },
+  "question2": {
+    "-OB6IB2289alMio7eizj": [
+      "red",
+      "blue"
+    ],
+    "-OB6Nd080M0D5Vml_1se": [
+      "tree",
+      "green",
+      "house"
+    ],
+    "-OB6NjJzK1i4XesnWgcR": [
+      "blue"
+    ]
+  },
+  "question3": {
+    "-OB6IB23nLmBZZDP3Pcr": [
+      "cat",
+      "door",
+      "dog"
+    ],
+    "-OB6Nd080M0D5Vml_1sf": [
+      "dog",
+      "bird"
+    ],
+    "-OB6NjK--Yme8UISHg1i": [
+      "dog"
+    ]
+  }
+}
