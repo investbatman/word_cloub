@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Collection Game</title>
+    <!-- Add Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+            background-image: url('images/start_bg.png');
+            width: 100vw;
+            height: 100vh;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            overflow: hidden;
+        }
+
+        .question-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            border: 5px solid #0004ff;
+            background-image: url('images/question.jpg');
+            margin: 0;
+            padding: 0;
+        }
+
+        .logo-box {
+            height: 15vh;           
+            border: 5px solid #0004ff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .question-box {
+            height: 10vh;  
+            font-size: 2.5vh;
+            border: 5px solid #0004ff;
+            padding: 2vh;
+            margin: 0;
+        }
+
+        .word-bank {
+            height: 22vh;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px;
+            border: 5px solid #0004ff;
+            margin: 0;
+        }
+        
+        .drop-zone {
+            min-height: 25vh;
+            border: 5px solid #0004ff;
+            padding: 1vh;
+            margin: 0;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        button {
+            font-size: 2vh;
+            padding: 2vh 4vw;
+            margin: 0;
+        }
+
+        .main-question-style {
+            color: rgb(255, 255, 255);
+            font-weight: bold;
+        }
+
+        .aux-question-style {
+            color: yellow;
+            font-weight: bold;
+        }
+
+        .home_word_style {
+            color: white;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-top: 5vh;
+            /* This pushes content down by 20% of viewport height */
+            box-sizing: border-box;
+        }
+
+        .home_word_style button {
+            font-size: 10vw;
+            width: 70vw;
+            padding: 10.5vw 0;
+            border-radius: 10vw;
+            cursor: pointer;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(1vw);
+            transition: all 0.3s ease;
+            /* smooth transition for all changes */
+            animation: flash 2s infinite;
+            /* Apply the flash animation */
+        }
+
+        /* Define the flashing animation */
+        @keyframes flash {
+            0% {
+                background-color: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            }
+
+            50% {
+                background-color: rgba(255, 255, 255, 0.4);
+                box-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            }
+
+            100% {
+                background-color: rgba(255, 255, 255, 0.2);
+                box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+            }
+        }
+
+        .home_word_style button:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+            /* slightly larger */
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            /* glowing effect */
+        }
+
+        .home_word_style button:active {
+            transform: scale(0.95);
+            /* slightly smaller when clicked */
+            background-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .home_word_style h1 {
+            font-size: 6.5vw;
+        }
+
+        .home_word_style p {
+            font-size: 4.5vw;
+        }
+
+        .home_word_style h2 {
+            font-size: 3.5vw;
+        }
+
+       
+    </style>
+
+</head>
+
+<body>
+    <div class="container">
+        <div id="start-screen" class="home_word_style">
+            <!--
+            <h1>Simply drag the word(s) of your choice</h1>
+            <div></div>
+            <h1>Are you ready to drag and drop?</h1>
+            <h1>YOUR VOICE MATTERS!</h1>
+            <p>Share your thoughts to shape the panel discussion in the luncheon.</p>
+        -->
+            <button onclick="startGame()">I am ready!</button>
+        </div>
+
+        <div id="question1" class="question-container">
+            <div class="logo-box"></div>
+            <div class="question-box">
+                <span class="main-question-style">Which of the following words can best describe the Insurance Authority?</span>
+                <span class="aux-question-style"><br>(You can choose up to 5 words)</span>  </div>
+            <div class="word-bank">
+                <div class="word" draggable="true">happy</div>
+                <div class="word" draggable="true">sad</div>
+                <div class="word" draggable="true">joyful</div>
+                <div class="word" draggable="true">excited</div>
+                <div class="word" draggable="true">angry</div>
+                <div class="word" draggable="true">快樂</div>
+                <div class="word" draggable="true">一一</div>
+                <div class="word" draggable="true">二二</div>
+                <div class="word" draggable="true">33</div>
+                <div class="word" draggable="true">44</div>
+                <div class="word" draggable="true">55</div>
+                <div class="word" draggable="true">66</div>
+                <div class="word" draggable="true">77</div>
+                <div class="word" draggable="true">88</div>
+                <div class="word" draggable="true">99</div>
+            </div>
+            <div class="drop-zone" id="dropZone1"></div>
+            <div class="button-zone" id="buttonZone1">
+                <button onclick="nextQuestion(1)" style="display: block;">Next</button>
+            </div>
+            
+        </div>
+
+       
+    </div>
+</body>

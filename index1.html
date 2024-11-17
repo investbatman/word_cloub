@@ -12,21 +12,27 @@
         /* Previous CSS remains the same */
         body {
             font-family: Arial, sans-serif;
-            margin: 2vw;
+            margin: 0;
+            /* Remove default margin */
+            padding: 0;
+            /* Remove default padding */
             touch-action: none;
             background-image: url('images/start_bg.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
-            min-height: 100vh;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
         }
 
         .container {
-            max-width: 800px;
-            height: calc(100vh - 40px);
+            width: 100%;
+            height: 100%;
+            max-width: none;
             margin: 0 auto;
-            padding: 20px;
+            padding: 0vh 0vw;
             overflow: hidden;
             box-sizing: border-box;
         }
@@ -106,15 +112,26 @@
 
 
         .question-container {
-            display: none;
-            margin: 20px 0;
+            margin-top: 0vh;
+            height: 90vh;
+            /* Take up most of the viewport height */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             border: 5px solid #0004ff;
+        }
+
+        h2 {
+            font-size: 4vh;
+            /* Scale text relative to viewport height */
+            margin: 3vh 0;
         }
 
         .word-bank {
             position: relative;
-            height: 40vh;
-            margin: 20px 0;
+            height: 45vh;
+            /* Allocate specific portion of viewport height */
+            margin: 2vh 0;
             overflow: hidden;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 10px;
@@ -124,7 +141,8 @@
 
         .word {
             position: absolute;
-            padding: 15px;
+            font-size: 2.5vh;
+            padding: 2vh 2vw;
             background: rgba(224, 224, 224, 0.9);
             border: 1px solid #999;
             border-radius: 5px;
@@ -134,7 +152,7 @@
             transition: transform 0.2s;
             box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
             z-index: 1;
-        }
+        } 
 
         .word.dragging {
             z-index: 1000;
@@ -151,9 +169,10 @@
             min-height: 100px;
             border: 5px solid #0004ff;
             /*border: 2px dashed #999;*/
-            padding: 10px;
-            margin: 20px 0;
-
+            padding: 1vh;
+            height: 25vh;
+            /* Allocate specific portion of viewport height */
+            margin: 2vh 0;
         }
 
         .drop-zone .word {
@@ -161,14 +180,15 @@
         }
 
         button {
-            padding: 10px 20px;
-            font-size: 16px;
-            margin: 10px;
+            font-size: 3vh;
+            padding: 2vh 4vw;
+            margin: 2vh;
         }
 
         #start-screen {
             text-align: center;
-            margin-top: 50px;
+            margin-top: 5vh;
+            /* Changed from 50px to 5vh */
         }
 
         #confirmation-screen {
@@ -176,7 +196,12 @@
         }
 
         .selected-words {
-            margin: 20px 0;
+            margin: 2vh 0;
+            /* Changed from 20px to 2vh */
+        }
+
+        #startButtonId{
+            margin-top: 50vh;
         }
     </style>
 
@@ -199,7 +224,7 @@
             <h1>YOUR VOICE MATTERS!</h1>
             <p>Share your thoughts to shape the panel discussion in the luncheon.</p>
         -->
-            <button onclick="startGame()">I am ready!</button>
+            <button id="startButtonId" onclick="startGame()">I am ready!</button>
         </div>
 
         <div id="question1" class="question-container">
@@ -261,6 +286,7 @@
     </div>
 
     <script>
+
         // Firebase configuration - Replace with your config
         const firebaseConfig = {
             apiKey: "AIzaSyDin1nEtRQYTSs1tj0FiokU30GNvi3XXVw",
@@ -277,6 +303,17 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        const VIEWPORT_HEIGHT = window.innerHeight;
+        const VIEWPORT_WIDTH = window.innerWidth;
+        const BASE_SIZE = Math.min(VIEWPORT_WIDTH, VIEWPORT_HEIGHT) * 0.05; // 5% of smallest dimension
+        const TOUCH_SENSITIVITY = 10; // Minimum distance for touch move
+        const WORD_SPACING = Math.min(window.innerWidth, window.innerHeight) * 0.15; // Space between words
+        const DROP_ZONE_THRESHOLD = 50; // Distance in pixels to detect drop zone
+        const WORD_SIZE = {
+    width: BASE_SIZE * 2,    // Makes width larger than height
+    height: BASE_SIZE        // Base height
+};
+
         const MAX_WORDS = 5;
 
         let selectedWords = {
@@ -288,8 +325,9 @@
 
         // Add touch event listeners and track touch positions
         let touchX, touchY;
-        let draggingElement = null;
-        let clonedElement = null;
+let draggingElement = null;
+let clonedElement = null;
+let touchOffset = { x: 0, y: 0 };
 
 
         let droppedWordsPositions = {
@@ -481,55 +519,22 @@
                 wordBank.style.display = 'block';
                 const bankRect = wordBank.getBoundingClientRect();
 
-                // Calculate usable area
-                const maxWidth = bankRect.width - 100; // Subtract padding and word width
-                const maxHeight = bankRect.height - 50; // Subtract padding and word height
-                const padding = 20;
+                // Calculate grid layout
+                const columns = Math.floor(bankRect.width / WORD_SPACING);
+                const positions = calculateGridPositions(words.length, columns, bankRect);
 
-                const positions = [];
 
-                words.forEach(word => {
-                    let validPosition = false;
-                    let attempts = 0;
-                    let randomX, randomY;
 
-                    while (!validPosition && attempts < 100) {
-                        randomX = padding + Math.random() * maxWidth;
-                        randomY = padding + Math.random() * maxHeight;
-
-                        validPosition = true;
-
-                        // Check for overlap with existing positions
-                        for (const pos of positions) {
-                            const distance = Math.sqrt(
-                                Math.pow(randomX - pos.x, 2) +
-                                Math.pow(randomY - pos.y, 2)
-                            );
-
-                            if (distance < 100) { // Minimum distance between words
-                                validPosition = false;
-                                break;
-                            }
-                        }
-
-                        attempts++;
-                    }
-
-                    // Store the position
-                    positions.push({
-                        x: randomX,
-                        y: randomY
-                    });
-
-                    // Random rotation between -15 and 15 degrees
-                    const randomRotation = Math.random() * 30 - 15;
+                words.forEach((word, index) => {
+                    const pos = positions[index];
+                    const randomRotation = Math.random() * 20 - 10; // Reduced rotation range
 
                     word.style.position = 'absolute';
-                    word.style.left = `${randomX}px`;
-                    word.style.top = `${randomY}px`;
+                    word.style.left = `${pos.x}px`;
+                    word.style.top = `${pos.y}px`;
                     word.style.transform = `rotate(${randomRotation}deg)`;
 
-                    // Add event listeners
+                    // Add touch and drag listeners with passive false for better performance
                     word.addEventListener('touchstart', handleTouchStart, { passive: false });
                     word.addEventListener('touchmove', handleTouchMove, { passive: false });
                     word.addEventListener('touchend', handleTouchEnd);
@@ -552,61 +557,108 @@
             });
         }
 
+        function calculateGridPositions(wordCount, columns, bankRect) {
+            const positions = [];
+            const rows = Math.ceil(wordCount / columns);
+            const cellWidth = bankRect.width / columns;
+            const cellHeight = bankRect.height / rows;
+
+            for (let i = 0; i < wordCount; i++) {
+                const row = Math.floor(i / columns);
+                const col = i % columns;
+
+                // Add slight randomness within cell
+                const randomX = (Math.random() - 0.5) * (cellWidth * 0.3);
+                const randomY = (Math.random() - 0.5) * (cellHeight * 0.3);
+
+                positions.push({
+                    x: col * cellWidth + cellWidth / 2 + randomX,
+                    y: row * cellHeight + cellHeight / 2 + randomY
+                });
+            }
+
+            return positions;
+        }
+
         function handleTouchStart(e) {
-            e.preventDefault();
-            const touch = e.touches[0];
-            touchX = touch.clientX;
-            touchY = touch.clientY;
-            draggingElement = this;
+    e.preventDefault();
+    const touch = e.touches[0];
+    touchX = touch.clientX;
+    touchY = touch.clientY;
+    draggingElement = e.target;
 
-            // Create clone for visual feedback
-            clonedElement = this.cloneNode(true);
-            clonedElement.style.position = 'fixed';
-            clonedElement.style.opacity = '0.8';
-            clonedElement.style.pointerEvents = 'none';
-            document.body.appendChild(clonedElement);
+    // Calculate offset
+    const rect = draggingElement.getBoundingClientRect();
+    touchOffset.x = touch.clientX - rect.left;
+    touchOffset.y = touch.clientY - rect.top;
 
-            updateClonePosition(touch.clientX, touch.clientY);
-        }
+    // Create clone
+    clonedElement = draggingElement.cloneNode(true);
+    clonedElement.style.position = 'fixed';
+    clonedElement.style.left = `${touchX - touchOffset.x}px`;
+    clonedElement.style.top = `${touchY - touchOffset.y}px`;
+    clonedElement.style.opacity = '0.8';
+    clonedElement.style.pointerEvents = 'none';
+    document.body.appendChild(clonedElement);
 
-        function handleTouchMove(e) {
-            e.preventDefault();
-            if (!draggingElement) return;
+    draggingElement.style.opacity = '0.5';
+}
 
-            const touch = e.touches[0];
-            touchX = touch.clientX;  // Update touch coordinates
-            touchY = touch.clientY;
-            updateClonePosition(touch.clientX, touch.clientY);
-        }
+function handleTouchMove(e) {
+    e.preventDefault();
+    if (!draggingElement || !clonedElement) return;
+
+    const touch = e.touches[0];
+    touchX = touch.clientX;
+    touchY = touch.clientY;
+
+    clonedElement.style.left = `${touchX - touchOffset.x}px`;
+    clonedElement.style.top = `${touchY - touchOffset.y}px`;
+}
 
         function updateClonePosition(x, y) {
-            if (clonedElement) {
-                // Offset by half the element's width/height to center it under the finger
-                const rect = clonedElement.getBoundingClientRect();
-                clonedElement.style.left = (x - rect.width / 2) + 'px';
-                clonedElement.style.top = (y - rect.height / 2) + 'px';
-            }
+            if (!clonedElement) return;
+
+            const rect = clonedElement.getBoundingClientRect();
+            const offsetX = rect.width / 2;
+            const offsetY = rect.height / 2;
+
+            // Use transform for better performance
+            clonedElement.style.transform = `translate(${x - offsetX}px, ${y - offsetY}px)`;
         }
 
         function handleTouchEnd(e) {
-            if (!draggingElement) return;
+    e.preventDefault();
+    if (!draggingElement) return;
 
-            // Find the drop zone under the finger
-            const touch = e.changedTouches[0];
-            const dropZone = document.elementFromPoint(touch.clientX, touch.clientY);
+    const touch = e.changedTouches[0];
+    const dropZone = document.elementFromPoint(touch.clientX, touch.clientY);
 
-            if (dropZone && dropZone.classList.contains('drop-zone')) {
-                const word = draggingElement.innerText;
-                addWordToDropZone(dropZone, word); // Use addWordToDropZone instead of manual clone
-            }
+    if (dropZone && dropZone.classList.contains('drop-zone')) {
+        const word = draggingElement.innerText;
+        const dropZoneRect = dropZone.getBoundingClientRect();
+        const position = {
+            x: touch.clientX - dropZoneRect.left - touchOffset.x,
+            y: touch.clientY - dropZoneRect.top - touchOffset.y
+        };
 
-            // Clean up
-            if (clonedElement) {
-                clonedElement.remove();
-                clonedElement = null;
-            }
-            draggingElement = null;
-        }
+        // Ensure position is within bounds
+        position.x = Math.max(0, Math.min(position.x, dropZoneRect.width - WORD_SIZE.width));
+        position.y = Math.max(0, Math.min(position.y, dropZoneRect.height - WORD_SIZE.height));
+
+        addWordToDropZone(dropZone, word, position);
+    }
+
+    // Cleanup
+    if (clonedElement) {
+        clonedElement.remove();
+        clonedElement = null;
+    }
+    if (draggingElement) {
+        draggingElement.style.opacity = '1';
+        draggingElement = null;
+    }
+}
 
         function handleDropZoneTouchMove(e) {
             e.preventDefault();
@@ -681,159 +733,265 @@
             }
         }
 
-        function addWordToDropZone(dropZone, word) {
-            // Check if drop zone already has 5 words
-            const existingWords = dropZone.querySelectorAll('.word');
-            if (existingWords.length >= MAX_WORDS) {
-                // Optional: Show message to user
-                alert('You can only choose ' + MAX_WORDS + ' words');
-                // Return the dragging element to its original state
-                if (draggingElement) {
-                    draggingElement.style.display = 'block';
-                }
-                return; // Exit the function
-            }
-            // Remove the original word from the word bank if it exists
-            if (draggingElement) {
-                //draggingElement.remove();
-                draggingElement.style.display = 'none';
-            }
+        
 
+        function addWordToDropZone(dropZone, word, position) {
+    const existingWords = dropZone.querySelectorAll('.word');
+    if (existingWords.length >= MAX_WORDS) {
+        showToast(`Maximum ${MAX_WORDS} words allowed`);
+        if (draggingElement) draggingElement.style.display = 'block';
+        return;
+    }
+
+    // Create and position the new word element
+    const wordElement = document.createElement('div');
+    wordElement.className = 'word';
+    wordElement.innerText = word;
+    wordElement.style.position = 'absolute';
+    wordElement.style.left = `${position.x}px`;
+    wordElement.style.top = `${position.y}px`;
+    wordElement.style.width = `${WORD_SIZE.width}px`;
+    wordElement.style.height = `${WORD_SIZE.height}px`;
+
+    // Add touch events to the new word
+    wordElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    wordElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+    wordElement.addEventListener('touchend', handleTouchEnd);
+
+    dropZone.appendChild(wordElement);
+
+    // Store position and update tracking
+    storeWordPosition(dropZone.id, word, position);
+    const questionNumber = dropZone.id.replace('dropZone', '');
+    updateSelectedWords(questionNumber, word);
+    updateNextButtonVisibility(questionNumber);
+    updateConfirmationScreen();
+
+    // Hide original word
+    if (draggingElement) {
+        draggingElement.style.display = 'none';
+    }
+}
+        // Add this helper function to update selected words
+function updateSelectedWords(questionNumber, word) {
+    if (!selectedWords[`question${questionNumber}`].includes(word)) {
+        selectedWords[`question${questionNumber}`].push(word);
+    }
+}
+// Add this helper function to update confirmation screen
+function updateConfirmationScreen() {
+    const confirmationScreen = document.getElementById('confirmation-screen');
+    if (confirmationScreen && confirmationScreen.style.display === 'block') {
+        showConfirmation();
+    }
+}
+
+        function createWordElement(word, dropZone) {
             const wordElement = document.createElement('div');
             wordElement.className = 'word';
             wordElement.innerText = word;
 
-            // Get drop zone position
-            const dropZoneRect = dropZone.getBoundingClientRect();
+            const position = calculateWordPosition(dropZone);
+            Object.assign(wordElement.style, {
+                position: 'absolute',
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                transform: `rotate(${Math.random() * 10 - 5}deg)`
+            });
 
-            // Calculate position relative to drop zone
-            let x = 0;
-            let y = 0;
+            addWordEventListeners(wordElement, dropZone, word);
+            storeWordPosition(dropZone.id, word, position);
+
+            return wordElement;
+        }
+
+        function calculateWordPosition(dropZone) {
+            const dropZoneRect = dropZone.getBoundingClientRect();
+            let x, y;
 
             if (touchX && touchY) {
                 x = touchX - dropZoneRect.left;
                 y = touchY - dropZoneRect.top;
             } else {
-                x = dropZoneRect.width / 2 - 50;
-                y = dropZoneRect.height / 2 - 25;
+                x = dropZoneRect.width / 2 - WORD_SIZE.width / 2;
+                y = dropZoneRect.height / 2 - WORD_SIZE.height / 2;
             }
 
-            // Ensure the word stays within bounds
-            x = Math.max(0, Math.min(x, dropZoneRect.width - 100));
-            y = Math.max(0, Math.min(y, dropZoneRect.height - 50));
-
-            // Set position
-            wordElement.style.position = 'absolute';
-            wordElement.style.left = `${x}px`;
-            wordElement.style.top = `${y}px`;
-
-            // Store the position
-            const zoneId = dropZone.id;
-            if (!droppedWordsPositions[zoneId]) {
-                droppedWordsPositions[zoneId] = [];
-            }
-            droppedWordsPositions[zoneId].push({
-                word: word,
-                x: x,
-                y: y
-            });
-
-            // Add touch events to the new element
-            wordElement.addEventListener('touchstart', handleTouchStart, { passive: false });
-            wordElement.addEventListener('touchmove', handleTouchMove, { passive: false });
-            wordElement.addEventListener('touchend', handleTouchEnd);
-
-            dropZone.appendChild(wordElement);
-
-            const questionNumber = dropZone.id.replace('dropZone', '');
-            if (!selectedWords[`question${questionNumber}`].includes(word)) {
-                selectedWords[`question${questionNumber}`].push(word);
-            }
-
-            // Update Next button visibility
-            updateNextButtonVisibility(questionNumber);
-
-            // Add click to remove functionality with return to word bank
-            wordElement.addEventListener('click', function () {
-                // Remove the position data
-                const index = droppedWordsPositions[zoneId].findIndex(item => item.word === word);
-                if (index > -1) {
-                    droppedWordsPositions[zoneId].splice(index, 1);
-                }
-
-                // Remove from drop zone
-                removeWordFromDropZone(dropZone, word);
-                this.remove();
-
-                // Return word to word bank
-                returnWordToBank(word, questionNumber);
-
-                // Update Next button visibility after removal
-                updateNextButtonVisibility(questionNumber);
-            });
-
-            // Update the confirmation screen
-            const confirmationScreen = document.getElementById('confirmation-screen');
-            if (confirmationScreen.style.display === 'block') {
-                showConfirmation();
-            }
+            return {
+                x: Math.max(0, Math.min(x, dropZoneRect.width - WORD_SIZE.width)),
+                y: Math.max(0, Math.min(y, dropZoneRect.height - WORD_SIZE.height))
+            };
         }
+
+        function addWordEventListeners(wordElement, dropZone, word) {
+            const touchEvents = {
+                touchstart: handleTouchStart,
+                touchmove: handleTouchMove,
+                touchend: handleTouchEnd
+            };
+
+            Object.entries(touchEvents).forEach(([event, handler]) => {
+                wordElement.addEventListener(event, handler, { passive: false });
+            });
+
+            wordElement.addEventListener('click', () => {
+                handleWordRemoval(wordElement, dropZone, word);
+            });
+        }
+
+        function handleWordRemoval(wordElement, dropZone, word) {
+            const zoneId = dropZone.id;
+            const questionNumber = zoneId.replace('dropZone', '');
+
+            removePositionData(zoneId, word);
+            removeWordFromDropZone(dropZone, word);
+            wordElement.remove();
+            returnWordToBank(word, questionNumber);
+            updateNextButtonVisibility(questionNumber);
+        }
+
+function storeWordPosition(zoneId, word, position) {
+    if (!droppedWordsPositions[zoneId]) {
+        droppedWordsPositions[zoneId] = [];
+    }
+    
+    // Remove any existing position data for this word
+    const existingIndex = droppedWordsPositions[zoneId].findIndex(item => item.word === word);
+    if (existingIndex > -1) {
+        droppedWordsPositions[zoneId].splice(existingIndex, 1);
+    }
+    
+    // Add new position data
+    droppedWordsPositions[zoneId].push({
+        word: word,
+        x: position.x,
+        y: position.y
+    });
+}
+
+// Add this helper function to remove position data
+function removePositionData(zoneId, word) {
+    if (droppedWordsPositions[zoneId]) {
+        const index = droppedWordsPositions[zoneId].findIndex(item => item.word === word);
+        if (index > -1) {
+            droppedWordsPositions[zoneId].splice(index, 1);
+        }
+    }
+}
 
         // Add this new function to return words to the word bank
         function returnWordToBank(word, questionNumber) {
             const wordBank = document.querySelector(`#question${questionNumber} .word-bank`);
-            if (wordBank) {
-                const newWord = document.createElement('div');
-                newWord.className = 'word';
-                newWord.innerText = word;
+            if (!wordBank) return;
 
-                // Calculate random position
-                const bankRect = wordBank.getBoundingClientRect();
-                const padding = 20;
-                const maxWidth = bankRect.width - 100 - (padding * 2);
-                const maxHeight = bankRect.height - 50 - (padding * 2);
+            const position = calculateBankPosition(wordBank);
+            const newWord = createBankWord(word, position);
+            wordBank.appendChild(newWord);
+            requestAnimationFrame(() => void newWord.offsetHeight);
+        }
 
-                let validPosition = false;
-                let randomX, randomY;
-                let attempts = 0;
+        function calculateBankPosition(wordBank) {
+            const bankRect = wordBank.getBoundingClientRect();
+            const padding = 20;
+            const maxWidth = bankRect.width - WORD_SIZE.width - (padding * 2);
+            const maxHeight = bankRect.height - WORD_SIZE.height - (padding * 2);
 
-                while (!validPosition && attempts < 50) {
-                    randomX = padding + Math.random() * maxWidth;
-                    randomY = padding + Math.random() * maxHeight;
+            return findValidPosition(wordBank, maxWidth, maxHeight, padding);
+        }
 
-                    // Check for overlaps with existing words
-                    validPosition = true;
-                    const existingWords = wordBank.querySelectorAll('.word');
-                    for (const existingWord of existingWords) {
-                        const rect = existingWord.getBoundingClientRect();
-                        const distance = Math.sqrt(
-                            Math.pow(randomX - (rect.left - bankRect.left), 2) +
-                            Math.pow(randomY - (rect.top - bankRect.top), 2)
-                        );
-                        if (distance < 80) { // Minimum distance between words
-                            validPosition = false;
-                            break;
-                        }
-                    }
-                    attempts++;
+        function findValidPosition(wordBank, maxWidth, maxHeight, padding) {
+            let attempts = 0;
+            while (attempts < 50) {
+                const position = {
+                    x: padding + Math.random() * maxWidth,
+                    y: padding + Math.random() * maxHeight
+                };
+
+                if (isValidPosition(position, wordBank)) {
+                    return position;
                 }
-
-                newWord.style.position = 'absolute';
-                newWord.style.left = `${randomX}px`;
-                newWord.style.top = `${randomY}px`;
-
-                // Add all necessary event listeners
-                newWord.addEventListener('touchstart', handleTouchStart, { passive: false });
-                newWord.addEventListener('touchmove', handleTouchMove, { passive: false });
-                newWord.addEventListener('touchend', handleTouchEnd);
-                newWord.addEventListener('dragstart', handleDragStart);
-                newWord.addEventListener('dragend', handleDragEnd);
-
-                wordBank.appendChild(newWord);
-
-                // Trigger a reflow to ensure the word appears
-                void newWord.offsetHeight;
+                attempts++;
             }
+
+            return { x: padding, y: padding };
+        }
+
+        function isValidPosition(position, wordBank) {
+            const existingWords = wordBank.querySelectorAll('.word');
+            const bankRect = wordBank.getBoundingClientRect();
+
+            return Array.from(existingWords).every(existingWord => {
+                const rect = existingWord.getBoundingClientRect();
+                const distance = Math.hypot(
+                    position.x - (rect.left - bankRect.left),
+                    position.y - (rect.top - bankRect.top)
+                );
+                return distance >= 80;
+            });
+        }
+
+        function createBankWord(word, position) {
+            const newWord = document.createElement('div');
+            newWord.className = 'word';
+            newWord.innerText = word;
+
+            Object.assign(newWord.style, {
+                position: 'absolute',
+                left: `${position.x}px`,
+                top: `${position.y}px`,
+                transform: `rotate(${Math.random() * 10 - 5}deg)`
+            });
+
+            const events = {
+                touchstart: handleTouchStart,
+                touchmove: handleTouchMove,
+                touchend: handleTouchEnd,
+                dragstart: handleDragStart,
+                dragend: handleDragEnd
+            };
+
+            Object.entries(events).forEach(([event, handler]) => {
+                newWord.addEventListener(event, handler, { passive: false });
+            });
+
+            return newWord;
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 2000);
+        }
+
+        // Add responsive resize handler
+        const resizeHandler = debounce(() => {
+            document.querySelectorAll('.word-bank').forEach(wordBank => {
+                const words = wordBank.querySelectorAll('.word');
+                const bankRect = wordBank.getBoundingClientRect();
+                words.forEach(word => {
+                    const position = calculateBankPosition(wordBank);
+                    Object.assign(word.style, {
+                        left: `${position.x}px`,
+                        top: `${position.y}px`
+                    });
+                });
+            });
+        }, 250);
+
+        window.addEventListener('resize', resizeHandler);
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
         }
 
         // Add this function to restore positions when navigating between questions
@@ -882,6 +1040,14 @@
         // Add this function to handle window resize
         window.addEventListener('resize', () => {
             const wordBanks = document.querySelectorAll('.word-bank');
+
+            const newVWidth = window.innerWidth;
+    const newVHeight = window.innerHeight;
+    const newBaseSize = Math.min(newVWidth, newVHeight) * 0.05;
+    
+    WORD_SIZE.width = newBaseSize * 2;
+    WORD_SIZE.height = newBaseSize;
+
             wordBanks.forEach(wordBank => {
                 const words = wordBank.querySelectorAll('.word');
                 const bankRect = wordBank.getBoundingClientRect();
@@ -891,6 +1057,8 @@
                     const randomY = Math.random() * (bankRect.height - word.offsetHeight);
                     word.style.left = `${randomX}px`;
                     word.style.top = `${randomY}px`;
+                    word.style.width = `${WORD_SIZE.width}px`;
+        word.style.height = `${WORD_SIZE.height}px`;
                 });
             });
         });
@@ -902,6 +1070,9 @@
     touch-action: none; /* Prevents default touch actions */
     -webkit-user-select: none; /* Prevents text selection on iOS */
     user-select: none;
+    width: ${WORD_SIZE.width}px;
+    height: ${WORD_SIZE.height}px;
+    transition: width 0.3s, height 0.3s;
 }
 
 .drop-zone {
