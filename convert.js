@@ -7,6 +7,23 @@ class WordsExtractor {
         this.question3Words = [];
     }
 
+    countWordFrequency(words) {
+        const frequency = {};
+        words.forEach(word => {
+            frequency[word] = (frequency[word] || 0) + 1;
+        });
+        return frequency;
+    }
+
+    formatForCSV(wordFrequency) {
+        const uniqueWords = Object.keys(wordFrequency);
+        const frequencies = uniqueWords.map(word => wordFrequency[word]);
+        return {
+            words: uniqueWords.join(','),
+            counts: frequencies.join(',')
+        };
+    }
+
     extractWords(inputFile) {
         try {
             console.log('Reading JSON file...');
@@ -39,16 +56,16 @@ class WordsExtractor {
                 });
             }
 
-            // Write to CSV files
-            this.writeWordsToFile('question_1_words.csv', this.question1Words);
-            this.writeWordsToFile('question_2_words.csv', this.question2Words);
-            this.writeWordsToFile('question_3_words.csv', this.question3Words);
+            // Process and write each question's data
+            this.processAndWriteToFile('question_1_words.csv', this.question1Words);
+            this.processAndWriteToFile('question_2_words.csv', this.question2Words);
+            this.processAndWriteToFile('question_3_words.csv', this.question3Words);
 
             // Print statistics
             console.log('\nStatistics:');
-            console.log(`Question 1 total words: ${this.question1Words.length}`);
-            console.log(`Question 2 total words: ${this.question2Words.length}`);
-            console.log(`Question 3 total words: ${this.question3Words.length}`);
+            console.log(`Question 1 unique words: ${new Set(this.question1Words).size}`);
+            console.log(`Question 2 unique words: ${new Set(this.question2Words).size}`);
+            console.log(`Question 3 unique words: ${new Set(this.question3Words).size}`);
 
         } catch (error) {
             console.error('Error during extraction:', error.message);
@@ -56,9 +73,13 @@ class WordsExtractor {
         }
     }
 
-    writeWordsToFile(filename, words) {
+    processAndWriteToFile(filename, words) {
         try {
-            fs.writeFileSync(filename, words.join(','));
+            const frequency = this.countWordFrequency(words);
+            const csvContent = this.formatForCSV(frequency);
+            
+            // Write both lines to the file
+            fs.writeFileSync(filename, csvContent.words + '\n' + csvContent.counts);
             console.log(`Successfully wrote ${filename}`);
         } catch (error) {
             console.error(`Error writing ${filename}:`, error.message);
